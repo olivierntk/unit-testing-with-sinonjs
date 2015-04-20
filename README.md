@@ -219,4 +219,6 @@ Notes:
 * If you look at the tests examples, I also added the case where userService.findById() returns a user. We are passing null as the first parameter (for the error) and then the 'found' user.
 * I also added an example in case the function you are testing takes a callback as one of its parameters.
 
-I hope you found this article usefull and clarified how to use SinonJS. Please comment back with questions or your own lessons learned.  Happy unit testing!
+Summary
+====================
+I hope you found this article usefull and clarified how to use SinonJS. There are quite a few concepts in this post and it took us some time to understand Sinon's API and how to use it properly. Please comment back with questions or your own lessons learned. Happy unit testing!
