@@ -120,10 +120,6 @@ But once you get a grasp of sinon's api, it can be quite easy.
 
 Let's look at lib/authentication_service.js. It has a login method which internally uses the asynchronous userService.findById method. findById() takes an id as its first parameter and a function to execute once it receives the data from the userService. The file /test/stub/authentication_service.js shows how we can test it.
 
-First, we are using mocha's hooks to create a res.send spy and userService.findById stub before each tests and reset/restore the spy/stub after each tests.
-
-In the first test, we are testing the error case and in the second one, we are testing the scenario where the userService returns a user:
-
     describe('login', function () {
       var req, res, stub;
 
@@ -149,44 +145,78 @@ In the first test, we are testing the error case and in the second one, we are t
       it('should return an error message if the authentication fails', function () {
         // setup:
         var error = new Error('Authentication failed.');
-        // we are passing an error as the first parameter of the callback
-        stub.callsArgWith(1, error);
+        stub.callsArgWithAsync(1, error);
 
         // when:
         authenticationService.login(req, res);
 
         // then:
-        expect(res.send).to.have.been.calledWith(error.message);
+        process.nextTick(function () {
+          expect(res.send).to.have.been.calledWith(error.message);
+          done();
+        });
       });
 
       it('should return the user if the authentication succeeds', function () {
         // setup:
-        var user = {id: 123, name: 'Obi one'};
-        // success case: error is null and the service returned a user
-        stub.callsArgWith(1, null, user);
+        var userFixture = {id: 123, name: 'Obi one'};
+        stub.callsArgWithAsync(1, null, userFixture);
 
         // when:
         authenticationService.login(req, res);
 
         // then:
-        expect(res.send).to.have.been.calledWith(user);
+        process.nextTick(function(){
+          expect(res.send).to.have.been.calledWith(userFixture);
+          done();
+        });
       });
     });
 
-Using callsArgWith/yields
+There are quite a few points to talk about in the code above.
 
-Sinon's callsArgWith first takes an index indicating the index of the callback in the parameter list and then the parameters that the callback will receive.
-Since findById first take an id and then a callback, the callback's index is 1. And because we want to test the error case, we pass it an error object.
-Using this method, we can control what our callback receives without having to execute the internal code of the userService.
+### beforeEach/afterEach
+First, note the use of mocha's hooks (beforeEach/afterEach) to create a res.send spy and userService.findById stub before each tests and reset/restore the spy/stub after each tests.
+It is important to reset/restore spies and stubs for subsequent tests and mocha's hooks are a convenient way to put these calls.
 
-Similarly, you can also use sinon's yields method that automatically takes the first callback. So instead of writing: stub.callsArgWith(1, error); you'd write stub.yields(error);
+### callsArg/yields and its family (callsArgWith/yields, callsArgWithAsync/yieldsAsync and co)
+SinonJS has a whole set of APIs around callsArg/yields and their asynchronous versions. Let's take a moment to look at the concepts and you will be able to understand most of Sinon's stub APIs
 
+From the docs:
+>"stub.callsArg(index): Causes the stub to call the argument at the provided index as a callback function. stub.callsArg(0); causes the stub to call the first argument as a callback."
+
+```callsArg``` allows us to execute the callback passed to the stub by passing the index of the callback. This callback in our case holds the logic we're trying to test.
+```callsArgWith``` takes the callback index and the arguments that should be passed to the callback. ```yield``` is the same as callsArgWith except we don't pass the callback index, as yield just picks up the first callback it finds.
+
+callsArgWith/yields have an asynchronous counterpart: callsArgWithAsync/yieldsAsync. The difference in the async versions is how the callback gets executed. In our case, the callback is executed asynchronously.
+
+In the first test, we are testing the error case.
+
+Since userService.findById first takes an id and then a callback, the callback's index is 1. And because we want to test the error case, we pass it an error object. Hence: ```stub.callsArgWithAsync(1, error);```. Using this method, we can control what our callback receives without having to execute the internal code of the userService. If you want to use yields, then you'd write ```stub.yieldsAsync(error);```.
+
+### process.nextTick()
+After setting up our fixtures and stub, we execute the method under test. The method under test puts our callback with our logic and spies on the event loop.
+If we were to do the expectation synchronously, as in:
+
+    it('should return an error message if the authentication fails', function (done) {
+      // setup:
+      var error = new Error('Authentication failed.');
+      stub.callsArgWithAsync(1, error);
+
+      // when:
+      authenticationService.login(req, res);
+
+      // then:
+      expect(res.send).to.have.been.calledWith(error.message);
+      done();
+    });
+
+Our tests would fail because we'd check on the spy before it is called in the userService.findById() callback.
+To make sure the spy was called, we put the expectation in a function that we put in the event loop after the callback using ```process.nextTick()```;
+We then call done() to tell mocha that our test completed.
 
 Notes:
 * If you look at the tests examples, I also added the case where userService.findById() returns a user. We are passing null as the first parameter (for the error) and then the 'found' user.
-
-* There are a whole family of functions around the ideas of callsArgWith/yields.
-
 * I also added an example in case the function you are testing takes a callback as one of its parameters.
 
-I hope you found this article usefull and clarified how to use SinonJS. Happy unit testing!
+I hope you found this article usefull and clarified how to use SinonJS. Please comment back with questions or your own lessons learned.  Happy unit testing!

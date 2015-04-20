@@ -32,52 +32,58 @@ describe('AuthenticationService', function () {
   });
 
   describe('login', function () {
-    it('should return an error message if the authentication fails', function () {
-      // setup:
-      var error = new Error('Authentication failed.');
-      stub.callsArgWith(1, error);
-
-      // when:
-      authenticationService.login(req, res);
-
-      // then:
-      expect(res.send).to.have.been.calledWith(error.message);
-    });
-
-    it('should return the user if the authentication succeeds', function () {
-      // setup:
-      var user = {id: 123, name: 'Obi one'};
-      stub.callsArgWith(1, null, user);
-
-      // when:
-      authenticationService.login(req, res);
-
-      // then:
-      expect(res.send).to.have.been.calledWith(user);
-    });
-  });
-
-  describe('asyncLogin', function () {
     it('should return an error message if the authentication fails', function (done) {
       // setup:
       var error = new Error('Authentication failed.');
-      stub.callsArgWith(1, error);
+      stub.callsArgWithAsync(1, error);
 
       // when:
-      authenticationService.loginWithCallback(req, res, function (err, result) {
-        expect(err).to.equal(error);
+      authenticationService.login(req, res);
+
+      // then:
+      process.nextTick(function () {
+        expect(res.send).to.have.been.calledWith(error.message);
         done();
       });
     });
 
     it('should return the user if the authentication succeeds', function (done) {
       // setup:
-      var user = {id: 123, name: 'Obi one'};
-      stub.callsArgWith(1, null, user);
+      var userFixture = {id: 123, name: 'Obi one'};
+      stub.callsArgWithAsync(1, null, userFixture);
 
       // when:
-      authenticationService.loginWithCallback(req, res, function (error, result) {
-        expect(result).to.equal(user);
+      authenticationService.login(req, res);
+
+      // then:
+      process.nextTick(function(){
+        expect(res.send).to.have.been.calledWith(userFixture);
+        done();
+      });
+    });
+  });
+
+  describe('loginWithCallback', function () {
+    it('should return an error message if the authentication fails', function (done) {
+      // setup:
+      var error = new Error('Authentication failed.');
+      stub.callsArgWithAsync(1, error);
+
+      // when:
+      authenticationService.loginWithCallback(req, res, function (err, result) {
+        expect(err.message).to.equal(error.message);
+        done();
+      });
+    });
+
+    it('should return the user if the authentication succeeds', function (done) {
+      // setup:
+      var userFixture = {id: 123, name: 'Obi one'};
+      stub.callsArgWithAsync(1, null, userFixture);
+
+      // when:
+      authenticationService.loginWithCallback(req, res, function (error, user) {
+        expect(user).to.equal(userFixture);
         done();
       });
     });
