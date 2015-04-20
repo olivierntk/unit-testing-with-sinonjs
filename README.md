@@ -179,7 +179,7 @@ There are quite a few points to talk about in the code above.
 First, note the use of mocha's hooks (beforeEach/afterEach) to create a res.send spy and userService.findById stub before each tests and reset/restore the spy/stub after each tests.
 It is important to reset/restore spies and stubs for subsequent tests and mocha's hooks are a convenient way to put these calls.
 
-### callsArg/yields and its family (callsArgWith/yields, callsArgWithAsync/yieldsAsync and co)
+### callsArg and its family (callsArgWith, yields, callsArgWithAsync, yieldsAsync ...)
 SinonJS has a whole set of APIs around callsArg/yields and their asynchronous versions. Let's take a moment to look at the concepts and you will be able to understand most of Sinon's stub APIs
 
 From the docs:
